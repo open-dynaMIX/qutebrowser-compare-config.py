@@ -137,18 +137,18 @@ def main():
     not_local = compare_lists(qute_settings, local_settings)
     not_qute = compare_lists(local_settings, qute_settings)
     if args.all and not_local:
-        print('#############\n'
-              'Not in local:\n'
-              '#############')
+        print('####################\n'
+              'Not in local config:\n'
+              '####################')
     if args.all or args.missing:
         for setting in not_local:
             print(setting)
     if args.all and not_qute:
         if not_local:
             print()
-        print('###################\n'
-              'Not in qutebrowser:\n'
-              '###################')
+        print('#############################\n'
+              'Not available in qutebrowser:\n'
+              '#############################')
     if args.all or args.dropped:
         for setting in not_qute:
             print(setting)

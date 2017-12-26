@@ -16,6 +16,7 @@ It also takes commented out settings from the local config into account.
 
 
 import os
+import sys
 import argparse
 import re
 from pathlib import Path
@@ -43,9 +44,14 @@ def parse_arguments():
             args.all = False
 
         if not args.config:
-            qute_standarddir.init(None)
+            qute_standarddir._init_config(None)
             args.config_paths = [os.path.join(qute_standarddir.config(),
                                  'config.py')]
+            if not os.path.isfile(args.config_paths[0]):
+                print('No config file(s) provided and "{}" does not exist!'
+                      .format(args.config_paths[0]),
+                      file=sys.stderr)
+                sys.exit(1)
         else:
             args.config_paths = [os.path.abspath(path) for path in args.config]
 
@@ -100,14 +106,21 @@ def parse_config_file(file):
 
 def get_local_settings(config_paths):
     settings = []
+    config_found = False
     for path in config_paths:
         if os.path.isdir(path):
             pathlist = Path(path).glob('**/*.py')
             for path in pathlist:
+                config_found = True
                 settings += parse_config_file(str(path))
         else:
-            settings += parse_config_file(path)
-    return settings
+            if path.endswith('.py') and os.path.isfile(path):
+                config_found = True
+                settings += parse_config_file(path)
+    if config_found:
+        return settings
+    else:
+        return False
 
 
 def compare_lists(list1, list2):
@@ -118,6 +131,9 @@ def main():
     args = parse_arguments()
     qute_settings = get_available_settings()
     local_settings = get_local_settings(args.config_paths)
+    if local_settings is False:
+        print('No config file(s) found!', file=sys.stderr)
+        sys.exit(1)
     not_local = compare_lists(qute_settings, local_settings)
     not_qute = compare_lists(local_settings, qute_settings)
     if args.all and not_local:

@@ -19,7 +19,7 @@ Usage and options
 
 ::
 
-    usage: qutebrowser-compare-config [-h] [-m] [-d] [config [config ...]]
+    usage: qutebrowser-compare-config.py [-h] [-m] [-d] [config [config ...]]
 
     Find settings for qutebrowser that are not present in local config and vice versa.
 

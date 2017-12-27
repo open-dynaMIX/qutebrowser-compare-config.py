@@ -1,5 +1,5 @@
-qutebrowser-compare-config
-==========================
+qutebrowser-compare-config.py
+=============================
 
 Find settings for `qutebrowser <https://github.com/qutebrowser/qutebrowser>`__ that are not present in local config
 and vice versa.

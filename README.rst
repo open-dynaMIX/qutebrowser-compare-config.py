@@ -19,15 +19,16 @@ Usage and options
 
 ::
 
-    usage: qutebrowser-compare-config.py [-h] [-m] [-d] [config [config ...]]
+    usage: qutebrowser-compare-config.py [-h] [-m] [-d] [-n] [config [config ...]]
 
     Find settings for qutebrowser that are not present in local config and vice versa.
 
     positional arguments:
-      config         List of config files or directories
+      config         List of config files or directories.Defaults to standard
+                     location of config.py
 
     optional arguments:
       -h, --help     show this help message and exit
       -m, --missing  only list settings missing in local config
       -d, --dropped  only list settings not present in qutebrowser anymore
-
+      -n, --naked    omit additional information (file/line-number/URL

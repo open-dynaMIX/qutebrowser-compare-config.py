@@ -132,11 +132,9 @@ def parse_config_file(path):
     with path.open() as f:
         lines = [x.strip() for x in f.readlines()]
     for line in lines:
-        if line:
-            if not line.startswith('## '):
-                setting = get_relevant_string_from_config_line(line)
-                if setting:
-                    settings.append(setting)
+        setting = get_relevant_string_from_config_line(line)
+        if setting:
+            settings.append(setting)
     return settings
 
 

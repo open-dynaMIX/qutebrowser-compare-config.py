@@ -28,7 +28,6 @@ It also takes commented out settings from the local config into account.
 """
 
 
-import sys
 import argparse
 import re
 from pathlib import Path
@@ -63,12 +62,15 @@ def parse_arguments():
         """
         Handle single path from args.config.
         Resolve all relative paths and gather all paths from directories.
+
+        Appends them as pathlib.Path to args.config_paths.
+
+        Args:
+            path: The path to be handled (str)
         """
         p = Path(path).resolve()
         if not p.exists():
-            print('"{}" does not exist!'.format(str(p)),
-                  file=sys.stderr)
-            sys.exit(1)
+            parser.error('"{}" does not exist!'.format(str(p)))
         elif p.is_file():
             args.config_paths.append(p.resolve())
         else:
@@ -83,10 +85,8 @@ def parse_arguments():
             qute_standarddir._init_config(None)
             args.config_paths = [Path(qute_standarddir.config(), 'config.py')]
             if not args.config_paths[0].is_file():
-                print('No config file(s) provided and "{}" does not exist!'
-                      .format(args.config_paths[0]),
-                      file=sys.stderr)
-                sys.exit(1)
+                parser.error('No config file(s) provided and "{}" does not '
+                             'exist!'.format(args.config_paths[0]))
         else:
             args.config_paths = []
             for path in args.config:
@@ -122,16 +122,23 @@ def parse_arguments():
 def get_available_settings():
     """
     Get all available settings from qutebrowser.
-    return: list of strings
+
+    Return:
+        List of settings [str, ...]
     """
     qute_configdata.init()
     return [setting for setting in qute_configdata.DATA]
 
 
-def get_relevant_string_from_config_line(line):
+def parse_config_line(line):
     """
     Get setting name from config-line.
-    return: string if found, else None
+
+    Args:
+        line: The line from the config-file to be parsed (str)
+
+    Return:
+        Str if found, else None
     """
     match = re.search('(#( )?)?c\.(?P<setting>.*) = .*', line)
     if match:
@@ -141,12 +148,19 @@ def get_relevant_string_from_config_line(line):
 def parse_config_file(path):
     """
     Parse a single config-file.
+
+    Args:
+        path: A config-file path, as pathlib.Path
+
+    Return:
+        List of settings [str, ...]
     """
     settings = []
-    with path.open() as f:
+    with path.open(mode='r') as f:
         lines = [x.strip() for x in f.readlines()]
+
     for line in lines:
-        setting = get_relevant_string_from_config_line(line)
+        setting = parse_config_line(line)
         if setting:
             settings.append(setting)
     return settings
@@ -155,7 +169,12 @@ def parse_config_file(path):
 def get_local_settings(config_paths):
     """
     Parse all given config-files for settings.
-    return: list of strings
+
+    Args:
+        config_paths: List of paths as pathlib.Path
+
+    Return:
+        List of settings [str, ...]
     """
     settings = []
     for path in config_paths:
@@ -166,21 +185,24 @@ def get_local_settings(config_paths):
 def compare_lists(list1, list2):
     """
     Compare two lists.
-    return: list of entries from list1 that are not in list2
+
+    Args:
+        list1: Base list
+        list2: List to be substracted
+
+    Return:
+        List of entries from list1 that are not in list2
     """
     return list(set(list1) - set(list2))
 
 
 def main():
     """
-    main
+    qutebrowser-compare-config.py main function.
     """
     args = parse_arguments()
     qute_settings = get_available_settings()
     local_settings = get_local_settings(args.config_paths)
-    if local_settings is False:
-        print('No config file(s) found!', file=sys.stderr)
-        sys.exit(1)
 
     not_local = compare_lists(qute_settings, local_settings)
     not_qute = compare_lists(local_settings, qute_settings)

@@ -113,7 +113,7 @@ def parse_arguments():
     parser.add_argument('-d', '--dropped', dest='dropped',
                         action='store_true',
                         help='only list settings not present in '
-                        'qutebrowser anymore')
+                        'qutebrowser')
 
     parser.add_argument('-n', '--naked', dest='naked',
                         action='store_true',

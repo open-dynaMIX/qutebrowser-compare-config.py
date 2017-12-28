@@ -33,7 +33,7 @@ Usage and options
     optional arguments:
       -h, --help     show this help message and exit
       -m, --missing  only list settings missing in local config
-      -d, --dropped  only list settings not present in qutebrowser anymore
+      -d, --dropped  only list settings not present in qutebrowser
       -n, --naked    omit additional information (file/line-number/URL
 
 

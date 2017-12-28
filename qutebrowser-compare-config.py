@@ -47,7 +47,7 @@ def parse_arguments():
     """
     Parse all arguments.
     """
-    def check_args():
+    def check_what_to_do():
         """
         Check what to do and set args.all.
         """
@@ -119,7 +119,7 @@ def parse_arguments():
 
     args = parser.parse_args()
 
-    check_args()
+    check_what_to_do()
     handle_paths()
 
     return args

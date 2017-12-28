@@ -216,7 +216,7 @@ def compare_lists(list1, list2):
 
 def print_it(data, naked):
     """
-    If not naked, print a pretty table out of two lists.
+    If not args.naked, print a pretty table out of two lists.
     Else just print the list.
 
     Args:
@@ -229,7 +229,7 @@ def print_it(data, naked):
             print(setting['name'])
     else:
         format_string = '{0:{length}}\033[1;30m{1}\033[1;m'
-        # very hacky way to get the length of the largest 'name' key
+        # very hacky way to get the length of the largest name
         length = len(max([x['name'] for x in data], key=len)) + 1
 
         for setting in data:

@@ -32,3 +32,16 @@ Usage and options
       -m, --missing  only list settings missing in local config
       -d, --dropped  only list settings not present in qutebrowser anymore
       -n, --naked    omit additional information (file/line-number/URL
+
+
+Example screenshot
+------------------
+
+.. image:: ./screenshot.png
+
+
+Known limitations
+-----------------
+
+There is no guarantee, that all of this works 100%. But for a well written
+config, this provides a good starting point to clean up.

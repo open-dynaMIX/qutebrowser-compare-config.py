@@ -31,7 +31,6 @@ It also takes commented out settings from the local config into account.
 import argparse
 import re
 from pathlib import Path
-from collections import OrderedDict
 from qutebrowser.config import configdata as qute_configdata
 from qutebrowser.utils import standarddir as qute_standarddir
 
@@ -160,7 +159,7 @@ def parse_config_file(path):
         path: A config-file path, as pathlib.Path
 
     Return:
-        Dict [{'setting': '/path/to/file:line-number', ...}]
+        Dict {'setting': ['/path/to/file:line-number', ...], ...}
     """
     settings = {}
     with path.open(mode='r') as f:
@@ -169,7 +168,11 @@ def parse_config_file(path):
     for no, line in enumerate(lines):
         setting = parse_config_line(line)
         if setting:
-            settings.update({setting: '{}:{}'.format(str(path), no + 1)})
+            location = '{}:{}'.format(str(path), no + 1)
+            if setting in settings:
+                settings[setting].append(location)
+            else:
+                settings[setting] = [location]
     return settings
 
 
@@ -181,11 +184,16 @@ def get_local_settings(config_paths):
         config_paths: List of paths as pathlib.Path
 
     Return:
-        Dict [{'setting': '/path/to/file:line-number', ...}]
+        Dict {'setting': ['/path/to/file:line-number', ...], ...}
     """
     settings = {}
     for path in config_paths:
-        settings.update(parse_config_file(path))
+        file_config = parse_config_file(path)
+        for setting in file_config:
+            if setting in settings:
+                settings[setting] += file_config[setting]
+            else:
+                settings[setting] = file_config[setting]
     return settings
 
 
@@ -209,18 +217,21 @@ def print_it(data, naked):
     Else just print the list.
 
     Args:
-        data: Dict {'setting': 'additional information', ...}
-        naked: Bool: Whether to print additional data or not.
+        data: List of dicts [{'name': setting,
+                              'location': location}, ...]
+        naked: Bool: Whether to print location or not.
     """
     if naked:
         for setting in data:
-            print(setting)
+            print(setting['name'])
     else:
         format_string = '{0:{length}}\033[1;30m{1}\033[1;m'
-        length = len(max(data, key=len)) + 2
-        for key, value in data.items():
-            print(format_string.format(key,
-                                       value,
+        # very hacky way to get the length of the largest 'name' key
+        length = len(max([x['name'] for x in data], key=len)) + 1
+
+        for setting in data:
+            print(format_string.format(setting['name'],
+                                       setting['location'],
                                        length=length))
 
 
@@ -238,10 +249,13 @@ def process_not_local(args, not_local):
               '####################')
 
     if args.all or args.missing:
-        data = {setting: 'qute://help/settings.html#{}'.format(setting)
-                for setting in not_local}
-        data = OrderedDict(sorted(data.items(), key=lambda t: t[0]))
-        print_it(data, args.naked)
+        url_format = 'qute://help/settings.html#{}'
+        data = [{'name': setting,
+                 'location': url_format.format(setting)}
+                for setting in not_local]
+
+        data_sorted = sorted(data, key=lambda k: k['location'])
+        print_it(data_sorted, args.naked)
 
 
 def process_not_qute(args, not_qute, local_settings):
@@ -251,17 +265,35 @@ def process_not_qute(args, not_qute, local_settings):
     Args:
         args: The arguments the script was invoked with
         not_qute: List of strings --> settings not available in qutebrowser
-        local_settings: Dict [{'setting': '/path/to/file:line-number', ...}]
+        local_settings: Dict {'setting': ['/path/to/file:line-number', ...],
+                              ...}
     """
+
+    def create_data_list_for_setting(cur_setting):
+        """
+        Create a list of dicts for a given setting.
+
+        Args:
+            cur_setting: Dict of current processed setting
+
+        Return:
+            A list of dicts [{'name': setting, 'location': location}, ...]
+        """
+        return [{'name': cur_setting, 'location': location}
+                for location in local_settings[cur_setting]]
+
     if args.all:
         print('#############################\n'
               'Not available in qutebrowser:\n'
               '#############################')
 
     if args.all or args.dropped:
-        data = {setting: local_settings[setting] for setting in not_qute}
-        data = OrderedDict(sorted(data.items(), key=lambda t: t[1]))
-        print_it(data, args.naked)
+        data = []
+        for setting in not_qute:
+            data += create_data_list_for_setting(setting)
+
+        data_sorted = sorted(data, key=lambda k: k['location'])
+        print_it(data_sorted, args.naked)
 
 
 def main():

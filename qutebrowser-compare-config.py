@@ -103,7 +103,7 @@ def parse_arguments():
 
     parser.add_argument('config', type=str, nargs='*',
                         default=[],
-                        help='List of config files or directories.'
+                        help='List of config files or directories. '
                         'Defaults to standard location of config.py')
 
     parser.add_argument('-m', '--missing', dest='missing',

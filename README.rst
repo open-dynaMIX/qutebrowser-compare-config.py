@@ -27,7 +27,7 @@ Usage and options
     Find settings for qutebrowser that are not present in local config and vice versa.
 
     positional arguments:
-      config         List of config files or directories.Defaults to standard
+      config         List of config files or directories. Defaults to standard
                      location of config.py
 
     optional arguments:

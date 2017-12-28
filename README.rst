@@ -43,5 +43,6 @@ Example screenshot
 Known limitations
 -----------------
 
-There is no guarantee, that all of this works 100%. But it should provide a
-good starting point for cleaning up.
+There is no guarantee, that all of this works 100% (parsing the user-written
+config will always be rather hacky). But it should provide a good starting
+point for cleaning up.

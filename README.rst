@@ -43,5 +43,5 @@ Example screenshot
 Known limitations
 -----------------
 
-There is no guarantee, that all of this works 100%. But for a well written
-config, this provides a good starting point to clean up.
+There is no guarantee, that all of this works 100%. But it should provide a
+good starting point for cleaning up.

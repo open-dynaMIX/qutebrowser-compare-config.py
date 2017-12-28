@@ -13,6 +13,9 @@ and parses all \*.py-files.
 
 It also takes commented out settings from the local config into account.
 
+This will not try to resolve the found issues. Your config files will only be
+read, never written to.
+
 
 Usage and options
 -----------------

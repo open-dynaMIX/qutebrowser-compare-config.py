@@ -47,7 +47,5 @@ Limitations
 -----------
 
 1. This will not read values set in autoconf.yml.
-2. There is no guarantee, that all of this works 100% (parsing the user-written
-config will always be rather hacky). But it should provide a good starting
-point for cleaning up.
+2. There is no guarantee, that all of this works 100% (parsing the user-written config will always be rather hacky). But it should provide a good starting point for cleaning up.
 3. Only tested on Linux, but it should also work on macOS/Windows.

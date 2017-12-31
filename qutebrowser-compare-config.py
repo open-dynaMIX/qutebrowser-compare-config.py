@@ -360,16 +360,9 @@ def process_defaults(args, qute_settings, not_qute, local_settings):
         for location in locations:
             if location['defined']:
                 continue
-            try:
-                if not eval(location['value']) == qute_settings[setting]:
-                    default = '    {}'.format(qute_settings[setting])
-                    url = ('    \033[1;30mqute://help/settings.html#{}'
-                           '\033[1;m'.format(setting))
-                    additional_lines = [default, url]
 
-                    changes.append({'name': setting,
-                                    'location': location['location'],
-                                    'additional_lines': additional_lines})
+            try:
+                evaluated_value = eval(location['value'])
             except Exception as e:
                 print('There was an error evaluating the value "{}":\n'
                       '{}\n--> {}'.format(location['value'],
@@ -377,6 +370,16 @@ def process_defaults(args, qute_settings, not_qute, local_settings):
                                           e),
                       file=sys.stderr)
                 sys.exit(1)
+
+            if not evaluated_value == qute_settings[setting]:
+                default = '    {}'.format(qute_settings[setting])
+                url = ('    \033[1;30mqute://help/settings.html#{}'
+                       '\033[1;m'.format(setting))
+                additional_lines = [default, url]
+
+                changes.append({'name': setting,
+                                'location': location['location'],
+                                'additional_lines': additional_lines})
 
     changes_sorted = sorted(changes, key=lambda k: k['location'])
     if changes_sorted:

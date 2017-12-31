@@ -34,6 +34,7 @@ read, never written to.
 """
 
 
+import sys
 import argparse
 import re
 from pathlib import Path
@@ -283,7 +284,7 @@ def render_it(data, naked):
     return result
 
 
-def process_not_local(args, not_local):
+def process_missing(args, not_local):
     """
     Handle the output for settings not present in local config.
 
@@ -303,7 +304,7 @@ def process_not_local(args, not_local):
         return render_it(data_sorted, args.naked)
 
 
-def process_not_qute(args, not_qute, local_settings):
+def process_dropped(args, not_qute, local_settings):
     """
     Handle the output for settings not available in qutebrowser.
 
@@ -359,15 +360,23 @@ def process_defaults(args, qute_settings, not_qute, local_settings):
         for location in locations:
             if location['defined']:
                 continue
-            if not eval(location['value']) == qute_settings[setting]:
-                default = '    {}'.format(qute_settings[setting])
-                url = ('    \033[1;30mqute://help/settings.html#{}'
-                       '\033[1;m'.format(setting))
-                additional_lines = [default, url]
+            try:
+                if not eval(location['value']) == qute_settings[setting]:
+                    default = '    {}'.format(qute_settings[setting])
+                    url = ('    \033[1;30mqute://help/settings.html#{}'
+                           '\033[1;m'.format(setting))
+                    additional_lines = [default, url]
 
-                changes.append({'name': setting,
-                                'location': location['location'],
-                                'additional_lines': additional_lines})
+                    changes.append({'name': setting,
+                                    'location': location['location'],
+                                    'additional_lines': additional_lines})
+            except Exception as e:
+                print('There was an error evaluating the value "{}":\n'
+                      '{}\n--> {}'.format(location['value'],
+                                                    location['location'],
+                                                    e),
+                      file=sys.stderr)
+                sys.exit(1)
 
     changes_sorted = sorted(changes, key=lambda k: k['location'])
     if changes_sorted:
@@ -409,8 +418,8 @@ def main():
         missing_header = ('####################\n'
                           'Not in local config:\n'
                           '####################')
-        missing_rendered = process_not_local(args,
-                                             not_local)
+        missing_rendered = process_missing(args,
+                                           not_local)
         if missing_rendered:
             results.append({'header': missing_header,
                             'list': missing_rendered})
@@ -419,9 +428,9 @@ def main():
         dropped_header = ('#############################\n'
                           'Not available in qutebrowser:\n'
                           '#############################')
-        dropped_rendered = process_not_qute(args,
-                                            not_qute,
-                                            local_settings)
+        dropped_rendered = process_dropped(args,
+                                           not_qute,
+                                           local_settings)
         if dropped_rendered:
             results.append({'header': dropped_header,
                             'list': dropped_rendered})

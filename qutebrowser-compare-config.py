@@ -276,10 +276,10 @@ def render_it(data, naked):
             result.append(format_string.format(setting['name'],
                                                setting['location'],
                                                length=length))
-            if not naked:
-                if 'additional_lines' in setting:
-                    for line in setting['additional_lines']:
-                        result.append(line)
+
+            if 'additional_lines' in setting:
+                for line in setting['additional_lines']:
+                    result.append(line)
 
     return result
 

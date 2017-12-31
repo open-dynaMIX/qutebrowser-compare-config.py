@@ -2,11 +2,12 @@ qutebrowser-compare-config.py
 =============================
 
 Find settings for `qutebrowser <https://github.com/qutebrowser/qutebrowser>`__ that are not present in local config
-and vice versa.
+and vice versa. Also check if default values are up-to-date.
 
 1. Get the list of configurable settings from qutebrowser.
 2. Parse local qutebrowser config file(s) and gather all present settings.
 3. Compare the two lists.
+4. Treat commented out settings as defaults and check if they're up-to-date.
 
 Takes a list of config-files and/or config-file-directories
 and parses all \*.py-files.
@@ -22,19 +23,25 @@ Usage and options
 
 ::
 
-    usage: qutebrowser-compare-config.py [-h] [-m] [-d] [-n] [config [config ...]]
+    usage: qutebrowser-compare-config.py [-h] [-m] [-d] [-c] [-n]
+                                         [config [config ...]]
 
     Find settings for qutebrowser that are not present in local config and vice versa.
 
     positional arguments:
-      config         List of config files or directories. Defaults to standard
-                     location of config.py
+      config                List of config files or directories. Defaults to
+                            standard location of config.py
 
     optional arguments:
-      -h, --help     show this help message and exit
-      -m, --missing  only list settings missing in local config
-      -d, --dropped  only list settings not present in qutebrowser
-      -n, --naked    omit additional information (file/line-number/URL
+      -h, --help            show this help message and exit
+      -m, --missing         list settings missing in local config
+      -d, --dropped         list settings not present in qutebrowser
+      -c, --changed-defaults
+                            treat commented out settings as defaults and compare
+                            values with default values from qutebrowser
+      -n, --naked           omit additional information (file/line-number/URL
+
+    Omitting -m, -d and -c is the same as -mdc.
 
 
 Example screenshot

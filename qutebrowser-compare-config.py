@@ -15,11 +15,12 @@
 
 """
 Find settings for qutebrowser that are not present in local config
-and vice versa.
+and vice versa. Also check if default values are up-to-date.
 
 1. Get the list of configurable settings from qutebrowser.
 2. Parse local qutebrowser config file(s) and gather all present settings.
 3. Compare the two lists.
+4. Treat commented out settings as defaults and check if they're up-to-date.
 
 Takes a list of config-files and/or config-file-directories
 and parses all *.py-files.
@@ -28,6 +29,8 @@ It also takes commented out settings from the local config into account.
 
 This will not try to resolve the found issues. Your config files will only be
 read, never written to.
+
+@newfield epilog: Epilog
 """
 
 
@@ -40,9 +43,11 @@ from qutebrowser.utils import standarddir as qute_standarddir
 
 __title__ = 'qutebrowser-compare-config.py'
 __description__ = ('Find settings for qutebrowser that are not present in '
-                   'local config and vice versa.')
-__copyright__ = "Copyright 2017, Fabio Rämi"
-__license__ = "GPL"
+                   'local config and vice versa. Also check if default values '
+                   'are up-to-date.')
+__epilog__ = 'Omitting -m, -d and -c is the same as -mdc.'
+__copyright__ = 'Copyright 2017, Fabio Rämi'
+__license__ = 'GPL'
 __author__ = 'Fabio Rämi'
 
 
@@ -52,14 +57,19 @@ def parse_arguments():
     """
     def check_what_to_do():
         """
-        Check what to do and set args.all.
+        Check what to do and set args.print_headers.
         """
-        if args.missing and args.dropped:
-            args.all = True
-        elif not args.missing and not args.dropped:
-            args.all = True
-        else:
-            args.all = False
+        count = 0
+        args.print_headers = True
+        for i in [args.missing, args.dropped, args.defaults]:
+            if i:
+                count += 1
+        if count == 1:
+            args.print_headers = False
+        elif count == 0:
+            args.missing = True
+            args.dropped = True
+            args.defaults = True
 
     def handle_path(path):
         """
@@ -98,6 +108,7 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser(prog=__title__,
                                      description=__description__,
+                                     epilog=__epilog__,
                                      formatter_class=argparse.
                                      RawDescriptionHelpFormatter)
 
@@ -108,12 +119,17 @@ def parse_arguments():
 
     parser.add_argument('-m', '--missing', dest='missing',
                         action='store_true',
-                        help='only list settings missing in local config')
+                        help='list settings missing in local config')
 
     parser.add_argument('-d', '--dropped', dest='dropped',
                         action='store_true',
-                        help='only list settings not present in '
+                        help='list settings not present in '
                         'qutebrowser')
+
+    parser.add_argument('-c', '--changed-defaults', dest='defaults',
+                        action='store_true',
+                        help='treat commented out settings as defaults and '
+                        'compare values with default values from qutebrowser')
 
     parser.add_argument('-n', '--naked', dest='naked',
                         action='store_true',
@@ -133,10 +149,11 @@ def get_available_settings():
     Get all available settings from qutebrowser.
 
     Return:
-        List of settings [str, ...]
+        Dict {setting: default value, ...}
     """
     qute_configdata.init()
-    return [setting for setting in qute_configdata.DATA]
+    return {setting: qute_configdata.DATA[setting].default
+            for setting in qute_configdata.DATA}
 
 
 def parse_config_line(line):
@@ -147,11 +164,18 @@ def parse_config_line(line):
         line: The line from the config-file to be parsed (str)
 
     Return:
-        Str if found, else None
+        Tuple: (Str, Str, Bool) if found, else (None, None, None)
     """
-    match = re.search('^(#( )?)?c\.(?P<setting>.*) = .*', line)
+    match = re.search('^(#( )?)?c\.(?P<setting>.*) = (?P<value>.*)', line)
     if match:
-        return match.group('setting')
+        if re.search('^#( )?', line):
+            defined = False
+        else:
+            defined = True
+
+        return match.group('setting'), match.group('value'), defined
+    else:
+        return None, None, None
 
 
 def parse_config_file(path):
@@ -162,20 +186,26 @@ def parse_config_file(path):
         path: A config-file path, as pathlib.Path
 
     Return:
-        Dict {'setting': ['/path/to/file:line-number', ...], ...}
+        Dict {'setting': [{'location': /path/to/file:line-number',
+                           'value': str,
+                           'defined': bool}, ...], ...}
     """
     settings = {}
     with path.open(mode='r') as f:
         lines = [x.strip() for x in f.readlines()]
 
     for no, line in enumerate(lines):
-        setting = parse_config_line(line)
+        setting, value, is_set = parse_config_line(line)
         if setting:
             location = '{}:{}'.format(str(path), no + 1)
             if setting in settings:
-                settings[setting].append(location)
+                settings[setting].append({'location': location,
+                                          'value': value,
+                                          'defined': is_set})
             else:
-                settings[setting] = [location]
+                settings[setting] = [{'location': location,
+                                      'value': value,
+                                      'defined': is_set}]
     return settings
 
 
@@ -187,7 +217,9 @@ def get_local_settings(config_paths):
         config_paths: List of paths as pathlib.Path
 
     Return:
-        Dict {'setting': ['/path/to/file:line-number', ...], ...}
+        Dict {'setting': [{'location': /path/to/file:line-number',
+                           'value': str,
+                           'defined': bool}, ...], ...}
     """
     settings = {}
     for path in config_paths:
@@ -200,42 +232,55 @@ def get_local_settings(config_paths):
     return settings
 
 
-def compare_lists(list1, list2):
+def compare_dict_keys(dict1, dict2):
     """
-    Compare two lists.
+    Compare keys od two dicts.
 
     Args:
-        list1: Base list
-        list2: List to be substracted
+        dict1: Base dict
+        dict2: Dict to be substracted
 
     Return:
-        List of entries from list1 that are not in list2
+        List of keys from dict1 that are not in dict2
     """
-    return list(set(list1) - set(list2))
+    return list(set(dict1.keys()) - set(dict2.keys()))
 
 
-def print_it(data, naked):
+def render_it(data, naked):
     """
-    If not args.naked, print a pretty table out of two lists.
-    Else just print the list.
+    If not args.naked, render a pretty table out of two lists.
+    Else just render the list of settings.
 
     Args:
         data: List of dicts [{'name': setting,
-                              'location': location}, ...]
+                              'location': location,
+                              'additional_lines': [str, ...]}, ...]
         naked: Bool: Whether to print location or not.
+
+    Return:
+        List of strings
     """
+    result = []
     if naked:
-        for setting in data:
-            print(setting['name'])
+        # prevent duplicates
+        data_list = [setting for setting in data]
+        for setting in data_list:
+            result.append(setting['name'])
     else:
         format_string = '{0:{length}}\033[1;30m{1}\033[1;m'
         # very hacky way to get the length of the largest name
         length = len(max([x['name'] for x in data], key=len)) + 1
 
         for setting in data:
-            print(format_string.format(setting['name'],
-                                       setting['location'],
-                                       length=length))
+            result.append(format_string.format(setting['name'],
+                                               setting['location'],
+                                               length=length))
+            if not naked:
+                if 'additional_lines' in setting:
+                    for line in setting['additional_lines']:
+                        result.append(line)
+
+    return result
 
 
 def process_not_local(args, not_local):
@@ -245,20 +290,17 @@ def process_not_local(args, not_local):
     Args:
         args: The arguments the script was invoked with
         not_local: List of strings --> settings not present in local config
+
+    Return:
+        List of strings
     """
-    if args.all:
-        print('####################\n'
-              'Not in local config:\n'
-              '####################')
+    data = [{'name': setting,
+             'location': 'qute://help/settings.html#{}'.format(setting)}
+            for setting in not_local]
 
-    if args.all or args.missing:
-        url_format = 'qute://help/settings.html#{}'
-        data = [{'name': setting,
-                 'location': url_format.format(setting)}
-                for setting in not_local]
-
-        data_sorted = sorted(data, key=lambda k: k['location'])
-        print_it(data_sorted, args.naked)
+    data_sorted = sorted(data, key=lambda k: k['location'])
+    if data_sorted:
+        return render_it(data_sorted, args.naked)
 
 
 def process_not_qute(args, not_qute, local_settings):
@@ -270,8 +312,10 @@ def process_not_qute(args, not_qute, local_settings):
         not_qute: List of strings --> settings not available in qutebrowser
         local_settings: Dict {'setting': ['/path/to/file:line-number', ...],
                               ...}
-    """
 
+    Return:
+        List of strings
+    """
     def create_data_list_for_setting(cur_setting):
         """
         Create a list of dicts for a given setting.
@@ -282,21 +326,70 @@ def process_not_qute(args, not_qute, local_settings):
         Return:
             A list of dicts [{'name': setting, 'location': location}, ...]
         """
-        return [{'name': cur_setting, 'location': location}
+        return [{'name': cur_setting, 'location': location['location']}
                 for location in local_settings[cur_setting]]
 
-    if args.all:
-        print('#############################\n'
-              'Not available in qutebrowser:\n'
-              '#############################')
+    data = []
+    for setting in not_qute:
+        data += create_data_list_for_setting(setting)
 
-    if args.all or args.dropped:
-        data = []
-        for setting in not_qute:
-            data += create_data_list_for_setting(setting)
+    data_sorted = sorted(data, key=lambda k: k['location'])
+    if data_sorted:
+        return render_it(data_sorted, args.naked)
 
-        data_sorted = sorted(data, key=lambda k: k['location'])
-        print_it(data_sorted, args.naked)
+
+def process_defaults(args, qute_settings, not_qute, local_settings):
+    """
+    Handle the output for changed default values in qutebrowser.
+
+    Args:
+        args: The arguments the script was invoked with
+        qute_settings: Dict of settings {setting: default value, ...}
+        not_qute: List of strings --> settings not available in qutebrowser
+        local_settings: Dict {'setting': ['/path/to/file:line-number', ...],
+                              ...}
+
+    Return:
+        List of strings
+    """
+    changes = []
+    for setting, locations in local_settings.items():
+        if setting in not_qute:
+            continue
+        for location in locations:
+            if location['defined']:
+                continue
+            if not eval(location['value']) == qute_settings[setting]:
+                default = '    {}'.format(qute_settings[setting])
+                url = ('    \033[1;30mqute://help/settings.html#{}'
+                       '\033[1;m'.format(setting))
+                additional_lines = [default, url]
+
+                changes.append({'name': setting,
+                                'location': location['location'],
+                                'additional_lines': additional_lines})
+
+    changes_sorted = sorted(changes, key=lambda k: k['location'])
+    if changes_sorted:
+        return render_it(changes_sorted, args.naked)
+
+
+def print_it(result, print_headers):
+    """
+    Print the lists.
+
+    Args:
+        result: List of strings
+        print_headers: Whether to print the headers (bool)
+    """
+    for count, result_list in enumerate(result):
+        if print_headers:
+            # make some space if this is not the first list
+            if count > 0:
+                print()
+            print(result_list['header'])
+        for entry in result_list['list']:
+            print(entry)
 
 
 def main():
@@ -307,20 +400,45 @@ def main():
     qute_settings = get_available_settings()
     local_settings = get_local_settings(args.config_paths)
 
-    not_local = compare_lists(qute_settings, local_settings.keys())
-    not_qute = compare_lists(local_settings.keys(), qute_settings)
+    not_local = compare_dict_keys(qute_settings, local_settings)
+    not_qute = compare_dict_keys(local_settings, qute_settings)
 
-    if not_local:
-        process_not_local(args,
-                          not_local)
+    results = []
 
-    if not_qute:
-        # make some space if this is the second list
-        if args.all and not_local:
-            print()
-        process_not_qute(args,
-                         not_qute,
-                         local_settings)
+    if args.missing:
+        missing_header = ('####################\n'
+                          'Not in local config:\n'
+                          '####################')
+        missing_rendered = process_not_local(args,
+                                             not_local)
+        if missing_rendered:
+            results.append({'header': missing_header,
+                            'list': missing_rendered})
+
+    if args.dropped:
+        dropped_header = ('#############################\n'
+                          'Not available in qutebrowser:\n'
+                          '#############################')
+        dropped_rendered = process_not_qute(args,
+                                            not_qute,
+                                            local_settings)
+        if dropped_rendered:
+            results.append({'header': dropped_header,
+                            'list': dropped_rendered})
+
+    if args.defaults:
+        defaults_header = ('#######################\n'
+                           'Changed default values:\n'
+                           '#######################')
+        defaults_rendered = process_defaults(args,
+                                             qute_settings,
+                                             not_qute,
+                                             local_settings)
+        if defaults_rendered:
+            results.append({'header': defaults_header,
+                            'list': defaults_rendered})
+
+    print_it(results, args.print_headers)
 
 
 if __name__ == '__main__':

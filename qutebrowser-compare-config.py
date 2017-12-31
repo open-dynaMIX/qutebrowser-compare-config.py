@@ -373,8 +373,8 @@ def process_defaults(args, qute_settings, not_qute, local_settings):
             except Exception as e:
                 print('There was an error evaluating the value "{}":\n'
                       '{}\n--> {}'.format(location['value'],
-                                                    location['location'],
-                                                    e),
+                                          location['location'],
+                                          e),
                       file=sys.stderr)
                 sys.exit(1)
 

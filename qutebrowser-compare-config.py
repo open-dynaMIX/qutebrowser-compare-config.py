@@ -38,6 +38,7 @@ import sys
 import argparse
 import re
 from pathlib import Path
+from qutebrowser import app  # Needed, because next import would fail without it
 from qutebrowser.config import configdata as qute_configdata
 from qutebrowser.utils import standarddir as qute_standarddir
 
